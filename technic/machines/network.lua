@@ -2,6 +2,9 @@
 -- Power network specific functions and data should live here
 -- 
 
+technic.networks = {}
+technic.cables = {}
+
 function technic.remove_network(network_id)
 	local cables = technic.cables
 	for pos_hash,cable_net_id in pairs(cables) do
