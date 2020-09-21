@@ -13,39 +13,38 @@ fixture("network")
 
 sourcefile("machines/network")
 
-describe("Power network helper functions", function()
+describe("Power network helper", function()
 
-	describe("Power network helper functions", function()
+	-- Simple network position fixtures
+	local net_id = 65536
+	local pos    = { x = -32768, y = -32767, z = -32768 }
+	local sw_pos = { x = -32768, y = -32766, z = -32768 }
 
-		it("returns nil if pos is nil", function()
-			assert.is_nil(
-				technic.sw_pos2network(nil)
-			)
+	describe("network lookup functions", function()
+
+		it("does not fail if network missing", function()
+			assert.is_nil( technic.remove_network(9999) )
 		end)
 
-		it("returns nil if network missing", function()
-			assert.is_nil(
-				technic.sw_pos2network({x=9999,y=9999,z=9999})
-			)
+		it("returns correct position for network", function()
+			assert.same(pos,    technic.network2pos(net_id) )
+			assert.same(sw_pos, technic.network2sw_pos(net_id) )
 		end)
 
-		it("returns network", function()
-			-- FIXME by constructing test network, fixture is not good here before spec gets stable enough
-			technic.cables[42] = 42
-			assert.equals(42,
-				technic.sw_pos2network({x=123,y=123,z=123})
-			)
+		it("returns correct network for position", function()
+			pending("TODO: Test requires real network fixture")
+			assert.same(net_id, technic.pos2network(pos) )
+			assert.same(net_id, technic.sw_pos2network(sw_pos) )
 		end)
-
-		--[[ TODO:
-		technic.remove_network(network_id)
-		technic.pos2network(pos)
-		technic.network2pos(network_id)
-		technic.network2sw_pos(network_id)
-		--]]
 
 	end)
 
+	--[[ TODO:
+	technic.remove_network(network_id)
+	technic.pos2network(pos)
+	technic.network2pos(network_id)
+	technic.network2sw_pos(network_id)
+	--]]
 
 	describe("Power network timeout functions technic.touch_node and technic.get_timeout", function()
 

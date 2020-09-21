@@ -60,6 +60,8 @@ _G.minetest.registered_nodes = {
 
 _G.minetest.registered_chatcommands = {}
 
+_G.minetest.register_lbm = noop
+_G.minetest.register_abm = noop
 _G.minetest.register_chatcommand = noop
 _G.minetest.chat_send_player = noop
 _G.minetest.register_craftitem = noop
