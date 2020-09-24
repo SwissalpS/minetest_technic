@@ -3,16 +3,15 @@ local has_monitoring_mod = minetest.get_modpath("monitoring")
 
 local switches = {} -- pos_hash -> { time = time_us }
 
-local function get_switch_data(pos)
-	local hash = minetest.hash_node_position(pos)
-	local switch = switches[hash]
+local function get_switch_data(network_id)
+	local switch = switches[network_id]
 
 	if not switch then
 		switch = {
 			time = 0,
 			skip = 0
 		}
-		switches[hash] = switch
+		switches[network_id] = switch
 	end
 
 	return switch
@@ -39,8 +38,11 @@ minetest.register_abm({
 	interval   = 1,
 	chance     = 1,
 	action = function(pos)
-		local switch = get_switch_data(pos)
-		switch.time = minetest.get_us_time()
+		local network_id = technic.sw_pos2network(pos)
+		if network_id then
+			local switch = get_switch_data(network_id)
+			switch.time = minetest.get_us_time()
+		end
 	end
 })
 
@@ -49,6 +51,7 @@ minetest.register_abm({
 local technic_run_interval = 1.0
 
 -- iterate over all collected switching stations and execute the technic_run function
+local off_delay_seconds = tonumber(minetest.settings:get("technic.switch.off_delay_seconds") or "1800")
 local timer = 0
 minetest.register_globalstep(function(dtime)
 	timer = timer + dtime
@@ -74,13 +77,12 @@ minetest.register_globalstep(function(dtime)
 
 	local now = minetest.get_us_time()
 
-	local off_delay_seconds = tonumber(minetest.settings:get("technic.switch.off_delay_seconds") or "1800")
 	local off_delay_micros = off_delay_seconds*1000*1000
 
 	local active_switches = 0
 
-	for hash, switch in pairs(switches) do
-		local pos = minetest.get_position_from_hash(hash)
+	for network_id, switch in pairs(switches) do
+		local pos = technic.network2sw_pos(network_id)
 		local diff = now - switch.time
 
 		minetest.get_voxel_manip(pos, pos)
@@ -88,7 +90,7 @@ minetest.register_globalstep(function(dtime)
 
 		if node.name ~= "technic:switching_station" then
 			-- station vanished
-			switches[hash] = nil
+			switches[network_id] = nil
 
 		elseif diff < off_delay_micros then
 			-- station active
@@ -126,7 +128,7 @@ minetest.register_globalstep(function(dtime)
 					-- remove laggy switching station from active index
 					-- it will be reactivated when a player is near it
 					-- laggy switching stations won't work well in unloaded areas this way
-					switches[hash] = nil
+					switches[network_id] = nil
 				end
 
 			else
@@ -136,13 +138,15 @@ minetest.register_globalstep(function(dtime)
 
 		else
 			-- station timed out
-			switches[hash] = nil
+			switches[network_id] = nil
 
 		end
 	end
 
 	local time_usage = minetest.get_us_time() - now
-
+	if math.random(1,50) == 1 then
+		print(string.format("ACTIVE SWITCHING STATIONS: %d TIME USED: %dms", active_switches, time_usage / 1000))
+	end
 	if has_monitoring_mod then
 		active_switching_stations_metric.set(active_switches)
 		switching_stations_usage_metric.inc(time_usage)

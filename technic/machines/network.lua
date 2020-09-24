@@ -1,14 +1,18 @@
 --
 -- Power network specific functions and data should live here
 --
+local S = technic.getter
 
 local switch_max_range = tonumber(minetest.settings:get("technic.switch_max_range") or "256")
 
 technic.networks = {}
 technic.cables = {}
 
+local poshash = minetest.hash_node_position
+local hashpos = minetest.get_position_from_hash
+
 function technic.create_network(sw_pos)
-	local network_id = minetest.hash_node_position({x=sw_pos.x,y=sw_pos.y-1,z=sw_pos.z})
+	local network_id = poshash({x=sw_pos.x,y=sw_pos.y-1,z=sw_pos.z})
 	technic.build_network(network_id)
 	return network_id
 end
@@ -39,31 +43,29 @@ function technic.remove_network(network_id)
 		end
 	end
 	technic.networks[network_id] = nil
+	print(string.format("NET DESTRUCT %s (%.17g)", minetest.pos_to_string(technic.network2pos(network_id), network_id)))
 end
 
 function technic.sw_pos2network(pos)
-	local poshash = minetest.hash_node_position({x=pos.x,y=pos.y-1,z=pos.z})
-	return technic.cables[poshash] and technic.cables[poshash]
+	return technic.cables[poshash({x=pos.x,y=pos.y-1,z=pos.z})]
 end
 
 function technic.sw_pos2network(pos)
-	local poshash = minetest.hash_node_position({x=pos.x,y=pos.y-1,z=pos.z})
-	return technic.cables[poshash] and technic.cables[poshash]
+	return technic.cables[poshash({x=pos.x,y=pos.y-1,z=pos.z})]
 end
 
 function technic.pos2network(pos)
-	local poshash = minetest.hash_node_position(pos)
-	return technic.cables[poshash] and technic.cables[poshash]
+	return technic.cables[poshash(pos)]
 end
 
 function technic.network2pos(network_id)
-	return network_id and minetest.get_position_from_hash(network_id)
+	return hashpos(network_id)
 end
 
 function technic.network2sw_pos(network_id)
 	-- Return switching station position for network.
 	-- It is not guaranteed that position actually contains switching station.
-	local sw_pos = minetest.get_position_from_hash(network_id)
+	local sw_pos = hashpos(network_id)
 	sw_pos.y = sw_pos.y + 1
 	return sw_pos
 end
@@ -75,7 +77,7 @@ function technic.get_timeout(tier, pos)
 		-- it is normal that some multi tier nodes always drop here when checking all LV, MV and HV tiers
 		return 0
 	end
-	return node_timeout[tier][minetest.hash_node_position(pos)] or 0
+	return node_timeout[tier][poshash(pos)] or 0
 end
 
 function technic.touch_node(tier, pos, timeout)
@@ -83,7 +85,7 @@ function technic.touch_node(tier, pos, timeout)
 		-- this should get built up during registration
 		node_timeout[tier] = {}
 	end
-	node_timeout[tier][minetest.hash_node_position(pos)] = timeout or 2
+	node_timeout[tier][poshash(pos)] = timeout or 2
 end
 
 --
@@ -95,7 +97,6 @@ local overloaded_networks = {}
 function technic.overload_network(network_id)
 	overloaded_networks[network_id] = minetest.get_us_time() + (overload_reset_time * 1000 * 1000)
 end
-local overload_network = technic.overload_network
 
 function technic.reset_overloaded(network_id)
 	local remaining = math.max(0, overloaded_networks[network_id] - minetest.get_us_time())
@@ -124,14 +125,14 @@ local function flatten(map)
 end
 
 local function attach_network_machine(network_id, pos)
-	local pos_hash = minetest.hash_node_position(pos)
+	local pos_hash = poshash(pos)
 	local net_id_old = technic.cables[pos_hash]
 	if net_id_old == nil then
 		technic.cables[pos_hash] = network_id
 	elseif net_id_old ~= network_id then
 		-- do not allow running pos from multiple networks, also disable switch
-		overload_network(network_id, pos)
-		overload_network(net_id_old, pos)
+		technic.overload_network(network_id, pos)
+		technic.overload_network(net_id_old, pos)
 		technic.cables[pos_hash] = network_id
 		local meta = minetest.get_meta(pos)
 		meta:set_string("infotext",S("Network Overloaded"))
@@ -140,7 +141,7 @@ end
 
 -- Add a wire node to the LV/MV/HV network
 local function add_network_node(nodes, pos, network_id)
-	local node_id = minetest.hash_node_position(pos)
+	local node_id = poshash(pos)
 	technic.cables[node_id] = network_id
 	if nodes[node_id] then
 		return false
@@ -235,6 +236,7 @@ local function get_network(network_id, tier)
 end
 
 function technic.build_network(network_id)
+	print(string.format("NET CONSTRUCT %s (%.17g)", minetest.pos_to_string(technic.network2pos(network_id)), network_id))
 	technic.networks[network_id] = nil
 	local sw_pos = technic.network2sw_pos(network_id)
 	local tier = technic.sw_pos2tier(sw_pos)
@@ -298,7 +300,7 @@ function technic.network_run(network_id)
 	local t0 = minetest.get_us_time()
 	local meta = minetest.get_meta(pos)
 	local meta1
-	local pos1 = {}
+	local pos1 = technic.network2pos(network_id)
 
 	local tier = ""
 	local PR_nodes
@@ -306,13 +308,10 @@ function technic.network_run(network_id)
 	local RE_nodes
 	local machine_name = S("Switching Station")
 
-	-- Which kind of network are we on:
-	pos1 = technic.network2pos(network_id)
-
-	local network_id = minetest.hash_node_position(pos1)
+	local network_id = poshash(pos1)
 	-- Check if network is overloaded / conflicts with another network
 	if technic.is_overloaded(network_id) then
-		local remaining = reset_overloaded(network_id)
+		local remaining = technic.reset_overloaded(network_id)
 		if remaining > 0 then
 			meta:set_string("infotext",S("%s Network Overloaded, Restart in %dms"):format(machine_name, remaining / 1000))
 			-- Set switching station supply value to zero to clean up power monitor supply info

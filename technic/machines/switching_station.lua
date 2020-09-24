@@ -16,6 +16,13 @@ minetest.register_craft({
 	}
 })
 
+local function start_network(pos)
+	local tier = technic.sw_pos2tier(pos)
+	if not tier then return end
+	local network_id = technic.sw_pos2network(pos) or technic.create_network(pos)
+	technic.activate_network(network_id)
+end
+
 local mesecon_def
 if mesecons_path then
 	mesecon_def = {effector = {
@@ -40,13 +47,23 @@ minetest.register_node("technic:switching_station",{
 		meta:set_string("infotext", S("Switching Station"))
 		meta:set_string("channel", "switching_station"..minetest.pos_to_string(pos))
 		meta:set_string("formspec", "field[channel;Channel;${channel}]")
-		local poshash = minetest.hash_node_position(pos)
+		start_network(pos)
 	end,
 	after_dig_node = function(pos)
 		-- Remove network when switching station is removed, if
 		-- there's another switching station network will be rebuilt.
 		local network_id = technic.sw_pos2network(pos)
-		technic.remove_network(network_id)
+		local network = network_id and technic.networks[network_id]
+		if network then
+			if #network.SP_nodes <= 1 then
+				-- Last switching station, network collapses
+				technic.remove_network(network_id)
+			else
+				-- Remove switching station from network
+				network.SP_nodes[minetest.hash_node_position(pos)] = nil
+				network.all_nodes[minetest.hash_node_position(pos)] = nil
+			end
+		end
 	end,
 	on_receive_fields = function(pos, formname, fields, sender)
 		if not fields.channel then
@@ -95,7 +112,7 @@ function technic.switching_station_run(pos)
 	if network_id then
 		return technic.network_run(network_id)
 	end
-	print(string.format("technic.switching_station_run(%s) failed, no network available", minetest.pos_to_string(pos)))
+	--print(string.format("technic.switching_station_run(%s) failed, no network available", minetest.pos_to_string(pos)))
 end
 
 -- Timeout ABM
@@ -140,13 +157,10 @@ minetest.register_abm({
 minetest.register_abm({
 	label = "Machines: re-enable check",
 	nodenames = {"technic:switching_station"},
-	interval   = 2,
+	interval   = 1,
 	chance     = 1,
 	action = function(pos, node, active_object_count, active_object_count_wider)
-		local tier = technic.sw_pos2tier(pos)
-		if not tier then return end
-		local network_id = technic.sw_pos2network(pos) or technic.create_network(pos)
-		technic.activate_network(network_id)
+		start_network(pos)
 	end,
 })
 
