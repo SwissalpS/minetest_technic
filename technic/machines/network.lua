@@ -43,7 +43,7 @@ function technic.remove_network(network_id)
 		end
 	end
 	technic.networks[network_id] = nil
-	print(string.format("NET DESTRUCT %s (%.17g)", minetest.pos_to_string(technic.network2pos(network_id), network_id)))
+	print(string.format("NET DESTRUCT %s (%.17g)", minetest.pos_to_string(technic.network2pos(network_id)), network_id))
 end
 
 function technic.sw_pos2network(pos)
