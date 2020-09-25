@@ -160,7 +160,32 @@ minetest.register_abm({
 	interval   = 1,
 	chance     = 1,
 	action = function(pos, node, active_object_count, active_object_count_wider)
-		start_network(pos)
+		local network_id = technic.sw_pos2network(pos)
+		-- Check if network is overloaded / conflicts with another network
+		if network_id then
+			local infotext
+			local meta = minetest.get_meta(pos)
+			if technic.is_overloaded(network_id) then
+				local remaining = technic.reset_overloaded(network_id)
+				if remaining > 0 then
+					infotext = S("%s Network Overloaded, Restart in %dms"):format(S("Switching Station"), remaining / 1000)
+					-- Set switching station supply value to zero to clean up power monitor supply info
+					-- TODO: This should be saved with network and removed from metadata
+					meta:set_int("supply",0)
+				else
+					infotext = S("%s Restarting Network"):format(S("Switching Station"))
+				end
+				technic.network_infotext(network_id, infotext)
+			else
+				-- Network exists and is not overloaded, reactivate for 4 seconds
+				technic.activate_network(network_id)
+				infotext = technic.network_infotext(network_id)
+			end
+			meta:set_string("infotext", infotext)
+		else
+			-- Network does not exist yet, attempt to create new network here
+			start_network(pos)
+		end
 	end,
 })
 

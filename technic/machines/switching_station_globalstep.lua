@@ -40,12 +40,15 @@ minetest.register_abm({
 	action = function(pos)
 		local network_id = technic.sw_pos2network(pos)
 		if network_id then
-			local switch = get_switch_data(network_id)
-			switch.time = minetest.get_us_time()
+			if technic.is_overloaded(network_id) then
+				switches[network_id] = nil
+			else
+				local switch = get_switch_data(network_id)
+				switch.time = minetest.get_us_time()
+			end
 		end
 	end
 })
-
 
 -- the interval between technic_run calls
 local technic_run_interval = 1.0
@@ -102,7 +105,6 @@ minetest.register_globalstep(function(dtime)
 				technic.switching_station_run(pos)
 				local switch_diff = minetest.get_us_time() - start
 
-
 				local meta = minetest.get_meta(pos)
 
 				-- set lag in microseconds into the "lag" meta field
@@ -122,7 +124,7 @@ minetest.register_globalstep(function(dtime)
 				if switch.skip > 0 then
 					-- calculate efficiency in percent and display it
 					local efficiency = math.floor(1/switch.skip*100)
-					meta:set_string("infotext", "Polyfuse triggered, current efficiency: " ..
+					technic.network_infotext(network_id, "Polyfuse triggered, current efficiency: " ..
 						efficiency .. "% generated lag : " .. math.floor(switch_diff/1000) .. " ms")
 
 					-- remove laggy switching station from active index
@@ -135,7 +137,6 @@ minetest.register_globalstep(function(dtime)
 				switch.skip = math.max(switch.skip - 1, 0)
 			end
 
-
 		else
 			-- station timed out
 			switches[network_id] = nil
@@ -143,18 +144,13 @@ minetest.register_globalstep(function(dtime)
 		end
 	end
 
-	local time_usage = minetest.get_us_time() - now
-	if math.random(1,50) == 1 then
-		print(string.format("ACTIVE SWITCHING STATIONS: %d TIME USED: %dms", active_switches, time_usage / 1000))
-	end
 	if has_monitoring_mod then
+		local time_usage = minetest.get_us_time() - now
 		active_switching_stations_metric.set(active_switches)
 		switching_stations_usage_metric.inc(time_usage)
 	end
 
-
 end)
-
 
 minetest.register_chatcommand("technic_flush_switch_cache", {
 	description = "removes all loaded switching stations from the cache",

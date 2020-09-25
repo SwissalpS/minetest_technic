@@ -70,6 +70,15 @@ function technic.network2sw_pos(network_id)
 	return sw_pos
 end
 
+function technic.network_infotext(network_id, text)
+	if technic.networks[network_id] == nil then return end
+	if text then
+		technic.networks[network_id].infotext = text
+	else
+		return technic.networks[network_id].infotext
+	end
+end
+
 local node_timeout = {}
 
 function technic.get_timeout(tier, pos)
@@ -183,9 +192,7 @@ local function check_node_subp(PR_nodes, RE_nodes, BA_nodes, SP_nodes, all_nodes
 			--attach_network_machine(network_id, pos)
 			add_network_node(PR_nodes, pos, network_id)
 			add_network_node(RE_nodes, pos, network_id)
-		elseif machines[name] == "SPECIAL" and
-				(pos.x ~= sw_pos.x or pos.y ~= sw_pos.y or pos.z ~= sw_pos.z) and
-				from_below then
+		elseif machines[name] == "SPECIAL" and from_below then
 			-- Another switching station -> disable it
 			attach_network_machine(network_id, pos)
 			add_network_node(SP_nodes, pos, network_id)
@@ -225,11 +232,6 @@ local function get_network(network_id, tier)
 		touch_nodes(cached.PR_nodes, tier)
 		touch_nodes(cached.BA_nodes, tier)
 		touch_nodes(cached.RE_nodes, tier)
-		for _, pos in ipairs(cached.SP_nodes) do
-			local meta = minetest.get_meta(pos)
-			meta:set_int("active", 0)
-			technic.touch_node(tier, pos, 2) -- Touch node
-		end
 		return cached.PR_nodes, cached.BA_nodes, cached.RE_nodes
 	end
 	return technic.build_network(network_id)
@@ -237,21 +239,21 @@ end
 
 function technic.build_network(network_id)
 	print(string.format("NET CONSTRUCT %s (%.17g)", minetest.pos_to_string(technic.network2pos(network_id)), network_id))
-	technic.networks[network_id] = nil
+	technic.remove_network(network_id)
 	local sw_pos = technic.network2sw_pos(network_id)
 	local tier = technic.sw_pos2tier(sw_pos)
 	if not tier then
 		print(string.format("Cannot build network, cannot get tier for switching station at %s", minetest.pos_to_string(sw_pos)))
 		return
 	end
-	local pos1 = technic.network2pos(network_id)
 	local PR_nodes = {}
 	local BA_nodes = {}
 	local RE_nodes = {}
 	local SP_nodes = {}
 	local all_nodes = {}
 	local queue = {}
-	add_cable_node(all_nodes, pos1, network_id, queue)
+	-- Add first cable (one that is holding network id)
+	add_cable_node(all_nodes, technic.network2pos(network_id), network_id, queue)
 	while next(queue) do
 		local to_visit = {}
 		for _, pos in ipairs(queue) do
@@ -306,19 +308,11 @@ function technic.network_run(network_id)
 	local PR_nodes
 	local BA_nodes
 	local RE_nodes
-	local machine_name = S("Switching Station")
 
 	local network_id = poshash(pos1)
 	-- Check if network is overloaded / conflicts with another network
 	if technic.is_overloaded(network_id) then
-		local remaining = technic.reset_overloaded(network_id)
-		if remaining > 0 then
-			meta:set_string("infotext",S("%s Network Overloaded, Restart in %dms"):format(machine_name, remaining / 1000))
-			-- Set switching station supply value to zero to clean up power monitor supply info
-			meta:set_int("supply",0)
-		else
-			meta:set_string("infotext",S("%s Restarting Network"):format(machine_name))
-		end
+		-- TODO: Overload check should happen before technic.network_run is called, overloaded network should not generate any events
 		return
 	end
 
@@ -329,7 +323,7 @@ function technic.network_run(network_id)
 		if technic.is_overloaded(network_id) then return end
 	else
 		--dprint("Not connected to a network")
-		meta:set_string("infotext", S("%s Has No Network"):format(machine_name))
+		technic.network_infotext(network_id, S("%s Has No Network"):format(S("Switching Station")))
 		return
 	end
 
@@ -405,8 +399,8 @@ function technic.network_run(network_id)
 	end
 	--dprint("Total BA demand:"..BA_eu_demand)
 
-	meta:set_string("infotext", S("@1. Supply: @2 Demand: @3",
-			machine_name, technic.EU_string(PR_eu_supply),
+	technic.network_infotext(network_id, S("@1. Supply: @2 Demand: @3",
+			S("Switching Station"), technic.EU_string(PR_eu_supply),
 			technic.EU_string(RE_eu_demand)))
 
 	-- If mesecon signal and power supply or demand changed then
