@@ -275,7 +275,7 @@ function technic.build_network(network_id)
 		tier = tier, all_nodes = all_nodes,
 		SP_nodes = SP_nodes, PR_nodes = PR_nodes, RE_nodes = RE_nodes, BA_nodes = BA_nodes,
 		supply = 0, demand = 0, timeout = 4,
-		battery_count = #BA_nodes, battery_charge_max = 0, battery_charge_max = 0,
+		battery_count = #BA_nodes, battery_charge = 0, battery_charge_max = 0,
 	}
 	return PR_nodes, BA_nodes, RE_nodes
 end
