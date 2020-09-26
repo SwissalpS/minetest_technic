@@ -184,8 +184,3 @@ minetest.register_abm({
 		end
 	end,
 })
-
-for tier, machines in pairs(technic.machines) do
-	-- SPECIAL will not be traversed
-	technic.register_machine(tier, "technic:switching_station", "SPECIAL")
-end

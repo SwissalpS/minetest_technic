@@ -197,10 +197,6 @@ local function check_node_subp(PR_nodes, RE_nodes, BA_nodes, SP_nodes, all_nodes
 			--attach_network_machine(network_id, pos)
 			add_network_node(PR_nodes, pos, network_id)
 			add_network_node(RE_nodes, pos, network_id)
-		elseif machines[name] == "SPECIAL" and from_below then
-			-- Another switching station -> disable it
-			attach_network_machine(network_id, pos)
-			add_network_node(SP_nodes, pos, network_id)
 		elseif machines[name] == technic.battery then
 			attach_network_machine(network_id, pos)
 			add_network_node(BA_nodes, pos, network_id)
