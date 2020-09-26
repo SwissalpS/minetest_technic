@@ -104,6 +104,11 @@ local overload_reset_time = tonumber(minetest.settings:get("technic.overload_res
 local overloaded_networks = {}
 
 function technic.overload_network(network_id)
+	local network = technic.networks[network_id]
+	if network then
+		network.supply = 0
+		network.battery_charge = 0
+	end
 	overloaded_networks[network_id] = minetest.get_us_time() + (overload_reset_time * 1000 * 1000)
 end
 
@@ -265,9 +270,13 @@ function technic.build_network(network_id)
 	PR_nodes = flatten(PR_nodes)
 	BA_nodes = flatten(BA_nodes)
 	RE_nodes = flatten(RE_nodes)
-	--SP_nodes = flatten(SP_nodes) -- can this be removed from network data?
-	technic.networks[network_id] = {tier = tier, all_nodes = all_nodes, SP_nodes = SP_nodes,
-			PR_nodes = PR_nodes, RE_nodes = RE_nodes, BA_nodes = BA_nodes, timeout = 4}
+	--SP_nodes = flatten(SP_nodes) -- TODO: can this be removed from network data?
+	technic.networks[network_id] = {
+		tier = tier, all_nodes = all_nodes,
+		SP_nodes = SP_nodes, PR_nodes = PR_nodes, RE_nodes = RE_nodes, BA_nodes = BA_nodes,
+		supply = 0, demand = 0, timeout = 4,
+		battery_count = #BA_nodes, battery_charge_max = 0, battery_charge_max = 0,
+	}
 	return PR_nodes, BA_nodes, RE_nodes
 end
 
@@ -315,9 +324,11 @@ function technic.network_run(network_id)
 	local RE_nodes
 
 	local tier = technic.sw_pos2tier(pos)
+	local network
 	if tier then
 		PR_nodes, BA_nodes, RE_nodes = get_network(network_id, tier)
 		if technic.is_overloaded(network_id) then return end
+		network = technic.networks[network_id]
 	else
 		--dprint("Not connected to a network")
 		technic.network_infotext(network_id, S("%s Has No Network"):format(S("Switching Station")))
@@ -400,13 +411,12 @@ function technic.network_run(network_id)
 			S("Switching Station"), technic.EU_string(PR_eu_supply),
 			technic.EU_string(RE_eu_demand)))
 
-	local meta = minetest.get_meta(pos)
-
 	-- If mesecon signal and power supply or demand changed then
 	-- send them via digilines.
 	if mesecons_path and digilines_path and mesecon.is_powered(pos) then
-		if PR_eu_supply ~= meta:get_int("supply") or
-				RE_eu_demand ~= meta:get_int("demand") then
+		if PR_eu_supply ~= network.supply or
+				RE_eu_demand ~= network.demand then
+			local meta = minetest.get_meta(pos)
 			local channel = meta:get_string("channel")
 			digilines.receptor_send(pos, technic.digilines.rules, channel, {
 				supply = PR_eu_supply,
@@ -416,11 +426,11 @@ function technic.network_run(network_id)
 	end
 
 	-- Data that will be used by the power monitor
-	meta:set_int("supply",PR_eu_supply)
-	meta:set_int("demand",RE_eu_demand)
-	meta:set_int("battery_count",#BA_nodes)
-	meta:set_int("battery_charge",BA_charge)
-	meta:set_int("battery_charge_max",BA_charge_max)
+	network.supply = PR_eu_supply
+	network.demand = RE_eu_demand
+	network.battery_count = #BA_nodes
+	network.battery_charge = BA_charge
+	network.battery_charge_max = BA_charge_max
 
 	-- If the PR supply is enough for the RE demand supply them all
 	if PR_eu_supply >= RE_eu_demand then
@@ -539,7 +549,8 @@ if false then
 			local keys = {
 				"LV_EU_timeout", "MV_EU_timeout", "HV_EU_timeout",
 				"LV_network", "MV_network", "HV_network",
-				"active_pos",
+				"active_pos", "supply", "demand",
+				"battery_count", "battery_charge", "battery_charge_max",
 			}
 			local meta = minetest.get_meta(pos)
 			for _,key in ipairs(keys) do
