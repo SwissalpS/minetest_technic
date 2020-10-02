@@ -147,13 +147,6 @@ end
 --
 -- Functions to traverse the electrical network
 --
-local function flatten(map)
-	local list = {}
-	for key, value in pairs(map) do
-		list[#list + 1] = value
-	end
-	return list
-end
 
 local function attach_network_machine(network_id, pos)
 	local pos_hash = poshash(pos)
@@ -256,6 +249,7 @@ function technic.add_network_branch(queue, sw_pos, network)
 	local BA_nodes = network.BA_nodes -- Indexed array
 	local RE_nodes = network.RE_nodes -- Indexed array
 	local all_nodes = network.all_nodes -- Hash table
+	local network_id = network.id
 	local tier = network.tier
 	while next(queue) do
 		local to_visit = {}
@@ -281,7 +275,7 @@ function technic.build_network(network_id)
 		return
 	end
 	local network = {
-		tier = tier, all_nodes = {},
+		id = network_id, tier = tier, all_nodes = {},
 		SP_nodes = {}, PR_nodes = {}, RE_nodes = {}, BA_nodes = {},
 		supply = 0, demand = 0, timeout = 4, battery_charge = 0, battery_charge_max = 0,
 	}
