@@ -35,6 +35,7 @@ function technic.sw_pos2tier(pos, use_vm)
 	return technic.get_cable_tier(minetest.get_node(cable_pos).name)
 end
 
+-- Destroy network data
 function technic.remove_network(network_id)
 	local cables = technic.cables
 	for pos_hash,cable_net_id in pairs(cables) do
@@ -44,6 +45,22 @@ function technic.remove_network(network_id)
 	end
 	technic.networks[network_id] = nil
 	--print(string.format("NET DESTRUCT %s (%.17g)", minetest.pos_to_string(technic.network2pos(network_id)), network_id))
+end
+
+-- Remove machine or cable from network
+local network_node_tables = {"PR_nodes","BA_nodes","RE_nodes","SP_nodes","all_nodes"}
+function technic.remove_network_node(network_id, pos)
+	local network = technic.networks[network_id]
+	if not network then return end
+	technic.cables[poshash(pos)] = nil
+	for _,tblname in ipairs(network_node_tables) do
+		local table = network[tblname]
+		for id,mpos in pairs(table) do
+			if mpos.x == pos.x and mpos.y == pos.y and mpos.z == pos.z then
+				table[id] = nil
+			end
+		end
+	end
 end
 
 function technic.sw_pos2network(pos)
@@ -153,31 +170,26 @@ local function attach_network_machine(network_id, pos)
 	end
 end
 
--- Add a wire node to the LV/MV/HV network
+-- Add a machine node to the LV/MV/HV network
 local function add_network_node(nodes, pos, network_id)
+	technic.cables[poshash(pos)] = network_id
+	table.insert(nodes, pos)
+end
+
+-- Add a wire node to the LV/MV/HV network
+local function add_cable_node(nodes, pos, network_id, queue)
 	local node_id = poshash(pos)
 	technic.cables[node_id] = network_id
 	if nodes[node_id] then
 		return false
 	end
 	nodes[node_id] = pos
-	return true
-end
-
-local function add_cable_node(nodes, pos, network_id, queue)
-	if add_network_node(nodes, pos, network_id) then
-		queue[#queue + 1] = pos
-	end
+	-- Also add cables to queue
+	queue[#queue + 1] = pos
 end
 
 -- Generic function to add found connected nodes to the right classification array
-local function check_node_subp(PR_nodes, RE_nodes, BA_nodes, SP_nodes, all_nodes, pos, machines, tier, sw_pos, from_below, network_id, queue)
-
-	local distance_to_switch = vector.distance(pos, sw_pos)
-	if distance_to_switch > switch_max_range then
-		-- max range exceeded
-		return
-	end
+local function check_node_subp(PR_nodes, RE_nodes, BA_nodes, all_nodes, pos, machines, tier, sw_pos, from_below, network_id, queue)
 
 	technic.get_or_load_node(pos)
 	local name = minetest.get_node(pos).name
@@ -207,7 +219,7 @@ local function check_node_subp(PR_nodes, RE_nodes, BA_nodes, SP_nodes, all_nodes
 end
 
 -- Traverse a network given a list of machines and a cable type name
-local function traverse_network(PR_nodes, RE_nodes, BA_nodes, SP_nodes, all_nodes, pos, machines, tier, sw_pos, network_id, queue)
+local function traverse_network(PR_nodes, RE_nodes, BA_nodes, all_nodes, pos, machines, tier, sw_pos, network_id, queue)
 	local positions = {
 		{x=pos.x+1, y=pos.y,   z=pos.z},
 		{x=pos.x-1, y=pos.y,   z=pos.z},
@@ -216,7 +228,7 @@ local function traverse_network(PR_nodes, RE_nodes, BA_nodes, SP_nodes, all_node
 		{x=pos.x,   y=pos.y,   z=pos.z+1},
 		{x=pos.x,   y=pos.y,   z=pos.z-1}}
 	for i, cur_pos in pairs(positions) do
-		check_node_subp(PR_nodes, RE_nodes, BA_nodes, SP_nodes, all_nodes, cur_pos, machines, tier, sw_pos, i == 3, network_id, queue)
+		check_node_subp(PR_nodes, RE_nodes, BA_nodes, all_nodes, cur_pos, machines, tier, sw_pos, i == 3, network_id, queue)
 	end
 end
 
@@ -238,42 +250,54 @@ local function get_network(network_id, tier)
 	return technic.build_network(network_id)
 end
 
+function technic.add_network_branch(queue, sw_pos, network)
+	-- Adds whole branch to network, queue positions can be used to bypass sub branches
+	local PR_nodes = network.PR_nodes -- Indexed array
+	local BA_nodes = network.BA_nodes -- Indexed array
+	local RE_nodes = network.RE_nodes -- Indexed array
+	local all_nodes = network.all_nodes -- Hash table
+	local tier = network.tier
+	while next(queue) do
+		local to_visit = {}
+		for _, pos in ipairs(queue) do
+			if vector.distance(pos, sw_pos) > switch_max_range then
+				-- max range exceeded
+				return
+			end
+			traverse_network(PR_nodes, RE_nodes, BA_nodes, all_nodes, pos,
+					technic.machines[tier], tier, sw_pos, network_id, to_visit)
+		end
+		queue = to_visit
+	end
+end
+
 function technic.build_network(network_id)
-	--print(string.format("NET CONSTRUCT %s (%.17g)", minetest.pos_to_string(technic.network2pos(network_id)), network_id))
+	print(string.format("NET CONSTRUCT %s (%.17g)", minetest.pos_to_string(technic.network2pos(network_id)), network_id))
 	technic.remove_network(network_id)
 	local sw_pos = technic.network2sw_pos(network_id)
 	local tier = technic.sw_pos2tier(sw_pos)
 	if not tier then
-		--print(string.format("Cannot build network, cannot get tier for switching station at %s", minetest.pos_to_string(sw_pos)))
+		print(string.format("Cannot build network, cannot get tier for switching station at %s", minetest.pos_to_string(sw_pos)))
 		return
 	end
-	local PR_nodes = {}
-	local BA_nodes = {}
-	local RE_nodes = {}
-	local SP_nodes = {}
-	local all_nodes = {}
-	local queue = {}
-	-- Add first cable (one that is holding network id)
-	add_cable_node(all_nodes, technic.network2pos(network_id), network_id, queue)
-	while next(queue) do
-		local to_visit = {}
-		for _, pos in ipairs(queue) do
-			traverse_network(PR_nodes, RE_nodes, BA_nodes, SP_nodes, all_nodes,
-					pos, technic.machines[tier], tier, sw_pos, network_id, to_visit)
-		end
-		queue = to_visit
-	end
-	PR_nodes = flatten(PR_nodes)
-	BA_nodes = flatten(BA_nodes)
-	RE_nodes = flatten(RE_nodes)
-	--SP_nodes = flatten(SP_nodes) -- TODO: can this be removed from network data?
-	technic.networks[network_id] = {
-		tier = tier, all_nodes = all_nodes,
-		SP_nodes = SP_nodes, PR_nodes = PR_nodes, RE_nodes = RE_nodes, BA_nodes = BA_nodes,
-		supply = 0, demand = 0, timeout = 4,
-		battery_count = #BA_nodes, battery_charge = 0, battery_charge_max = 0,
+	local network = {
+		tier = tier, all_nodes = {},
+		SP_nodes = {}, PR_nodes = {}, RE_nodes = {}, BA_nodes = {},
+		supply = 0, demand = 0, timeout = 4, battery_charge = 0, battery_charge_max = 0,
 	}
-	return PR_nodes, BA_nodes, RE_nodes
+	-- Add first cable (one that is holding network id) and build network
+	local queue = {}
+	add_cable_node(network.all_nodes, technic.network2pos(network_id), network_id, queue)
+	technic.add_network_branch(queue, sw_pos, network)
+	-- Flatten hashes to optimize iterations
+	--network.PR_nodes = flatten(network.PR_nodes) -- Already processed as indexed array
+	--network.BA_nodes = flatten(network.BA_nodes) -- Already processed as indexed array
+	--network.RE_nodes = flatten(network.RE_nodes) -- Already processed as indexed array
+	network.battery_count = #network.BA_nodes
+	-- Add newly built network to cache array
+	technic.networks[network_id] = network
+	-- And return producers, batteries and receivers (should this simply return network?)
+	return network.PR_nodes, network.BA_nodes, network.RE_nodes
 end
 
 --
