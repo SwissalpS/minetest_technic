@@ -9,9 +9,18 @@ fixture("minetest")
 fixture("minetest/player")
 fixture("minetest/protection")
 
+fixture("pipeworks")
 fixture("network")
 
 sourcefile("machines/network")
+
+sourcefile("machines/register/cables")
+sourcefile("machines/LV/cables")
+sourcefile("machines/MV/cables")
+sourcefile("machines/HV/cables")
+
+sourcefile("machines/register/generator")
+sourcefile("machines/HV/generator")
 
 describe("Power network helper", function()
 
@@ -52,22 +61,35 @@ describe("Power network helper", function()
 
 	describe("network constructors/destructors", function()
 
-		it("builds network branch", function()
-			local net_id = minetest.hash_node_position({x=100,y=100,z=100})
-			local network = {
-				id = net_id, tier = 'LV', all_nodes = {},
-				SP_nodes = {}, PR_nodes = {}, RE_nodes = {}, BA_nodes = {},
-				supply = 0, demand = 0, timeout = 4, battery_charge = 0, battery_charge_max = 0,
-			}
-			technic.add_network_branch({{x=100,y=100,z=100}},{x=100,y=101,z=100},network)
-			-- Check that global network table is not created
-			assert.is_nil(technic.networks[net_id])
+		-- Build network
+		local net_id = technic.create_network({x=100,y=501,z=100})
+		assert.is_number(net_id)
+
+		it("creates network", function()
+			assert.is_hashed(technic.networks[net_id])
+		end)
+
+		it("builds network", function()
+			local net = technic.networks[net_id]
+			-- Network table is valid
+			assert.is_indexed(net.SP_nodes)
+			assert.is_indexed(net.PR_nodes)
+			assert.is_indexed(net.RE_nodes)
+			assert.is_indexed(net.BA_nodes)
+			assert.equals(9, count(net.all_nodes))
+			assert.is_hashed(net.all_nodes)
+		end)
+
+		it("does not add duplicates to network", function()
+			local net = technic.networks[net_id]
 			-- Local network table is still valid
-			assert.equals(0, #network.SP_nodes)
-			assert.equals(0, #network.PR_nodes)
-			assert.equals(0, #network.RE_nodes)
-			assert.equals(0, #network.BA_nodes)
-			assert.equals(5, (function()local c=0 for _ in pairs(network.all_nodes)do c=c+1 end return c end)())
+			assert.equals(0, count(net.SP_nodes))
+			assert.equals(1, count(net.PR_nodes))
+			assert.equals(0, count(net.RE_nodes))
+			assert.equals(0, count(net.BA_nodes))
+			assert.equals(9, count(net.all_nodes))
+			-- FIXME: This might be wrong if technic.cables should contain only cables and not machines
+			assert.equals(9, count(technic.cables))
 		end)
 
 	end)

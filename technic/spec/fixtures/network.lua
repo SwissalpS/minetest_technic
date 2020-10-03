@@ -27,7 +27,11 @@ local world = {
 	{{x=102,y=500,z=100}, "technic:hv_cable"},
 	{{x=103,y=500,z=100}, "technic:hv_cable"},
 	{{x=104,y=500,z=100}, "technic:hv_cable"},
-	{{x=100,y=501,z=100}, "technic:switching_station"},
+	{{x=100,y=501,z=100}, "technic:hv_generator"},
+	{{x=101,y=501,z=100}, "technic:hv_cable"},
+	{{x=102,y=501,z=100}, "technic:switching_station"},
+	{{x=100,y=502,z=100}, "technic:hv_cable"},
+	{{x=101,y=502,z=100}, "technic:hv_cable"},
 }
 
 -- Build world for tests
@@ -44,9 +48,3 @@ sourcefile("register")
 technic.register_tier("LV", "Busted LV")
 technic.register_tier("MV", "Busted MV")
 technic.register_tier("HV", "Busted HV")
-
-sourcefile("machines/register/cables")
-
-sourcefile("machines/LV/cables")
-sourcefile("machines/MV/cables")
-sourcefile("machines/HV/cables")
