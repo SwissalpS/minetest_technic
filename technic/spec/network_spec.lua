@@ -32,9 +32,9 @@ describe("Power network helper", function()
 		end)
 
 		it("returns correct network for position", function()
-			pending("TODO: Test requires real network fixture")
-			assert.same(net_id, technic.pos2network(pos) )
-			assert.same(net_id, technic.sw_pos2network(sw_pos) )
+			local net_id = technic.create_network({x=100,y=501,z=100})
+			assert.same(net_id, technic.pos2network({x=100,y=500,z=100}) )
+			assert.same(net_id, technic.sw_pos2network({x=100,y=501,z=100}) )
 		end)
 
 		it("returns nil tier for empty position", function()
@@ -46,6 +46,28 @@ describe("Power network helper", function()
 			assert.same("LV", technic.sw_pos2tier({x=100,y=101,z=100}))
 			assert.same("MV", technic.sw_pos2tier({x=100,y=201,z=100}))
 			assert.same("HV", technic.sw_pos2tier({x=100,y=301,z=100}))
+		end)
+
+	end)
+
+	describe("network constructors/destructors", function()
+
+		it("builds network branch", function()
+			local net_id = minetest.hash_node_position({x=100,y=100,z=100})
+			local network = {
+				id = net_id, tier = 'LV', all_nodes = {},
+				SP_nodes = {}, PR_nodes = {}, RE_nodes = {}, BA_nodes = {},
+				supply = 0, demand = 0, timeout = 4, battery_charge = 0, battery_charge_max = 0,
+			}
+			technic.add_network_branch({{x=100,y=100,z=100}},{x=100,y=101,z=100},network)
+			-- Check that global network table is not created
+			assert.is_nil(technic.networks[net_id])
+			-- Local network table is still valid
+			assert.equals(0, #network.SP_nodes)
+			assert.equals(0, #network.PR_nodes)
+			assert.equals(0, #network.RE_nodes)
+			assert.equals(0, #network.BA_nodes)
+			assert.equals(5, (function()local c=0 for _ in pairs(network.all_nodes)do c=c+1 end return c end)())
 		end)
 
 	end)
