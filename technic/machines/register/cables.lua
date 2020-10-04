@@ -46,8 +46,8 @@ local function place_network_node(pos, node)
 
 	-- Get the network if there's any
 	local network_id
-	for _,pos in ipairs(positions) do
-		network_id = technic.pos2network(pos)
+	for _,connect_pos in ipairs(positions) do
+		network_id = technic.pos2network(connect_pos)
 		if network_id then break end
 	end
 	if not network_id then
@@ -61,8 +61,8 @@ local function place_network_node(pos, node)
 		-- TODO: Allow connecting networks:
 		-- If neighbor branch belongs to another network check which one has least #all_nodes and rebuild that branch
 		local removed = 0
-		for _,pos in ipairs(positions) do
-			local net = technic.pos2network(pos)
+		for _,connect_pos in ipairs(positions) do
+			local net = technic.pos2network(connect_pos)
 			if net and net ~= network_id then
 				-- Remove network if position belongs to another network
 				technic.remove_network(network_id)
