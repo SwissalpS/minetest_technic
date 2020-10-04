@@ -252,7 +252,7 @@ local function get_network(network_id, tier)
 end
 
 function technic.add_network_branch(queue, sw_pos, network)
-	print(string.format("technic.add_network_branch(%s, %s, %.17g)",queue,minetest.pos_to_string(sw_pos),network.id))
+	--print(string.format("technic.add_network_branch(%s, %s, %.17g)",queue,minetest.pos_to_string(sw_pos),network.id))
 	-- Adds whole branch to network, queue positions can be used to bypass sub branches
 	local PR_nodes = network.PR_nodes -- Indexed array
 	local BA_nodes = network.BA_nodes -- Indexed array
@@ -276,12 +276,12 @@ function technic.add_network_branch(queue, sw_pos, network)
 end
 
 function technic.build_network(network_id)
-	print(string.format("technic.build_network(%.17g) at %s", network_id, minetest.pos_to_string(technic.network2pos(network_id))))
+	--print(string.format("technic.build_network(%.17g) at %s", network_id, minetest.pos_to_string(technic.network2pos(network_id))))
 	technic.remove_network(network_id)
 	local sw_pos = technic.network2sw_pos(network_id)
 	local tier = technic.sw_pos2tier(sw_pos)
 	if not tier then
-		print(string.format("Cannot build network, cannot get tier for switching station at %s", minetest.pos_to_string(sw_pos)))
+		--print(string.format("Cannot build network, cannot get tier for switching station at %s", minetest.pos_to_string(sw_pos)))
 		return
 	end
 	local network = {
