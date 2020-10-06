@@ -58,11 +58,11 @@ function technic.remove_network_node(network_id, pos)
 	network.all_nodes[node_id] = nil
 	-- Clear indexed arrays, do NOT leave holes
 	for _,tblname in ipairs(network_node_arrays) do
-		local table = network[tblname]
-		for i=#table,1,-1 do
-			local mpos = table[i]
+		local tbl = network[tblname]
+		for i=#tbl,1,-1 do
+			local mpos = tbl[i]
 			if mpos.x == pos.x and mpos.y == pos.y and mpos.z == pos.z then
-				table.remove(table, i)
+				table.remove(tbl, i)
 				break
 			end
 		end
