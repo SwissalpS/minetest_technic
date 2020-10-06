@@ -50,12 +50,11 @@ local function place_network_node(pos, node)
 		network_id = technic.pos2network(connect_pos)
 		if network_id then break end
 	end
-	if not network_id then
+	local network = technic.networks[network_id]
+	if not network then
 		-- We're evidently not on a network, nothing to add ourselves to
 		return
 	end
-	local network = technic.networks[network_id]
-	local tier = network.tier
 
 	if not dead_end then
 		-- TODO: Allow connecting networks:
@@ -80,6 +79,7 @@ local function place_network_node(pos, node)
 	-- Dead end placed, add it to the network
 	-- Actually add it to the (cached) network
 	-- TODO: This should use check_node_subp or add_network_branch
+	local tier = network.tier
 	local pos_hash = minetest.hash_node_position(pos)
 	technic.cables[pos_hash] = network_id
 	pos.visited = 1
