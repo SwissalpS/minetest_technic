@@ -103,10 +103,11 @@ local function make_on(mark, length)
 			minetest.check_for_falling(pos)
 			for i = 1, length do
 				place_pos = vector.add(place_pos, dir)
-				if not minetest.is_protected(place_pos, owner) then
-					local place_node = minetest.get_node(place_pos)
-					deploy_node(inv, "slot"..i, place_pos, place_node, node)
+				if owner ~= "" and minetest.is_protected(place_pos, owner) then
+					return
 				end
+				local place_node = minetest.get_node(place_pos)
+				deploy_node(inv, "slot"..i, place_pos, place_node, node)
 			end
 		end
 	end
@@ -142,9 +143,6 @@ local function make_constructor(mark, length)
 			mesecon = 2, technic_constructor = 1},
 		mesecons = {effector = {action_on = make_on(mark, length)}},
 		sounds = default.node_sound_stone_defaults(),
-		after_place_node = function (pos, placer)
-			minetest.get_meta(pos):set_string("owner", placer:get_player_name())
-		end,
 		on_construct = function(pos)
 			local meta = minetest.get_meta(pos)
 			local formspec = "size[8,9;]"..
@@ -162,6 +160,11 @@ local function make_constructor(mark, length)
 			for i = 1, length do
 				inv:set_size("slot"..i, 1)
 			end
+			meta:set_string("owner", "?")
+		end,
+		after_place_node = function(pos, placer)
+			local meta = minetest.get_meta(pos)
+			meta:set_string("owner", (placer and placer:get_player_name() or "?"))
 		end,
 		can_dig = function(pos, player)
 			local meta = minetest.get_meta(pos)
@@ -202,4 +205,3 @@ end
 make_constructor(1, 1)
 make_constructor(2, 2)
 make_constructor(3, 4)
-
