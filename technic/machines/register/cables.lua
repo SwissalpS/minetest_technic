@@ -77,26 +77,7 @@ local function place_network_node(pos, node)
 	end
 
 	-- Dead end placed, add it to the network
-	-- Actually add it to the (cached) network
-	-- TODO: This should use check_node_subp or add_network_branch
-	local tier = network.tier
-	local pos_hash = minetest.hash_node_position(pos)
-	technic.cables[pos_hash] = network_id
-	pos.visited = 1
-	if technic.is_tier_cable(name, tier) then
-		network.all_nodes[pos_hash] = pos
-	elseif technic.machines[tier][node.name] then
-		if     technic.machines[tier][node.name] == technic.producer then
-			table.insert(network.PR_nodes,pos)
-		elseif technic.machines[tier][node.name] == technic.receiver then
-			table.insert(network.RE_nodes,pos)
-		elseif technic.machines[tier][node.name] == technic.producer_receiver then
-			table.insert(network.PR_nodes,pos)
-			table.insert(network.RE_nodes,pos)
-		elseif technic.machines[tier][node.name] == technic.battery then
-			table.insert(network.BA_nodes,pos)
-		end
-	end
+	technic.add_network_node(pos, network)
 end
 
 local function remove_network_node(pos)
