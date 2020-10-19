@@ -32,4 +32,6 @@ dofile(path.."/supply_converter.lua")
 dofile(path.."/other/init.lua")
 
 -- https://github.com/mt-mods/technic/issues/100
-dofile(path.."/compat/digtron.lua")
+-- Digtron is too broken currently, other problems with
+-- HV connector use would need actually patching Digtron code.
+--dofile(path.."/compat/digtron.lua")
