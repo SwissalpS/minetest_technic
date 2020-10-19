@@ -275,8 +275,7 @@ local function get_network(network_id, tier)
 	return technic.build_network(network_id)
 end
 
-function technic.add_network_branch(queue, sw_pos, network)
-	--print(string.format("technic.add_network_branch(%s, %s, %.17g)",queue,minetest.pos_to_string(sw_pos),network.id))
+function technic.add_network_branch(queue, network)
 	-- Adds whole branch to network, queue positions can be used to bypass sub branches
 	local PR_nodes = network.PR_nodes -- Indexed array
 	local BA_nodes = network.BA_nodes -- Indexed array
@@ -285,6 +284,8 @@ function technic.add_network_branch(queue, sw_pos, network)
 	local network_id = network.id
 	local tier = network.tier
 	local machines = technic.machines[tier]
+	local sw_pos = technic.network2sw_pos(network_id)
+	--print(string.format("technic.add_network_branch(%s, %s, %.17g)",queue,minetest.pos_to_string(sw_pos),network.id))
 	while next(queue) do
 		local to_visit = {}
 		for _, pos in ipairs(queue) do
@@ -321,7 +322,7 @@ function technic.build_network(network_id)
 	-- Add first cable (one that is holding network id) and build network
 	local queue = {}
 	add_cable_node(network.all_nodes, technic.network2pos(network_id), network_id, queue)
-	technic.add_network_branch(queue, sw_pos, network)
+	technic.add_network_branch(queue, network)
 	network.battery_count = #network.BA_nodes
 	-- Add newly built network to cache array
 	networks[network_id] = network
