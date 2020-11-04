@@ -16,33 +16,25 @@ local function inject_items(pos, dir)
 		local inv = meta:get_inventory()
 		local mode=meta:get_string("mode")
 		if mode=="single items" then
-			local i=0
-			for _,stack in ipairs(inv:get_list("main")) do
-			i=i+1
-				if stack then
+			local i=math.random(1, 16)
+			local stack = inv:get_stack('main', i)
+			if stack then
 				local item0=stack:to_table()
 				if item0 then
 					item0["count"] = 1
 					technic.tube_inject_item(pos, pos, dir, item0)
-					stack:take_item(1)
-					inv:set_stack("main", i, stack)
 					return
-					end
 				end
 			end
 		end
 		if mode=="whole stacks" then
-			local i=0
-			for _,stack in ipairs(inv:get_list("main")) do
-			i=i+1
-				if stack then
+			local i=math.random(1, 16)
+			local stack = inv:get_stack('main', i)
+			if stack then
 				local item0=stack:to_table()
 				if item0 then
 					technic.tube_inject_item(pos, pos, dir, item0)
-					stack:clear()
-					inv:set_stack("main", i, stack)
 					return
-					end
 				end
 			end
 		end
@@ -63,7 +55,7 @@ local function set_injector_formspec(meta)
 	meta:set_string("formspec",
 		"size[8,9;]"..
 		"item_image[0,0;1,1;technic:injector]"..
-		"label[1,0;"..S("Self-Contained Injector").."]"..
+		"label[1,0;"..S("Magical Self-Contained Injector").."]"..
 		(is_stack and
 			"button[0,1;2,1;mode_item;"..S("Stackwise").."]" or
 			"button[0,1;2,1;mode_stack;"..S("Itemwise").."]")..
@@ -83,7 +75,7 @@ local function set_injector_formspec(meta)
 end
 
 minetest.register_node("technic:injector", {
-	description = S("Self-Contained Injector"),
+	description = S("Magical Self-Contained Injector"),
 	tiles = {
 		"technic_injector_top.png"..tube_entry,
 		"technic_injector_bottom.png",
@@ -96,12 +88,7 @@ minetest.register_node("technic:injector", {
 	groups = {snappy=2, choppy=2, oddly_breakable_by_hand=2, tubedevice=1, tubedevice_receiver=1},
 	tube = {
 		can_insert = function(pos, node, stack, direction)
-			local meta = minetest.get_meta(pos)
-			local inv = meta:get_inventory()
-			if meta:get_int("splitstacks") == 1 then
-				stack = stack:peek_item(1)
-			end
-			return inv:room_for_item("main", stack)
+			return false
 		end,
 		insert_object = function(pos, node, stack, direction)
 			return minetest.get_meta(pos):get_inventory():add_item("main", stack)
@@ -111,16 +98,14 @@ minetest.register_node("technic:injector", {
 	sounds = default.node_sound_wood_defaults(),
 	on_construct = function(pos)
 		local meta = minetest.get_meta(pos)
-		meta:set_string("infotext", S("Self-Contained Injector"))
+		meta:set_string("infotext", S("Magical Self-Contained Injector"))
 		local inv = meta:get_inventory()
 		inv:set_size("main", 8*2)
 		meta:set_string("mode","single items")
 		set_injector_formspec(meta)
 	end,
 	can_dig = function(pos,player)
-		local meta = minetest.get_meta(pos);
-		local inv = meta:get_inventory()
-		return inv:is_empty("main")
+		return true
 	end,
 	on_receive_fields = function(pos, formanme, fields, sender)
 		local meta = minetest.get_meta(pos)
@@ -155,3 +140,4 @@ minetest.register_abm({
 		end
 	end,
 })
+

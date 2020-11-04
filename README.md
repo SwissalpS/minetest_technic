@@ -1,6 +1,14 @@
 Technic
 -----------------
 
+This branch was created to test drawers. The self-contained injector has been
+modified to never run out of items. Slots are picked at random. You can dig it
+anytime. It's renamed to 'Magical  Self-Contained Injector' but the item name
+remains.
+
+############### NOT INTENDED FOR PRODUCTION USE ##################
+
+
 A mod for [minetest](http://www.minetest.net)
 
 ![integration-test](https://github.com/mt-mods/technic/workflows/integration-test/badge.svg)
@@ -148,3 +156,4 @@ Recommended mods that build on the `technic mod`:
 Unless otherwise stated, all components of this modpack are licensed under the
 LGPL, V2 or later.  See also the individual mod folders for their
 secondary/alternate licenses, if any.
+
